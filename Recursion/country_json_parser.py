@@ -33,24 +33,31 @@ keyword_list = {'name': 'name', 'id': 'id', 'iso2code': 'iso2Code', 'region id':
                 'longitude': 'longitude', 'latitude': 'latitude'}
 
 
-def country_json_parser(json_data, keyword, query):
+def country_json_parser(country, json_data, keyword, query):
 
-    for item in json_data:
-        # we only need to work with the list, a country data, not the dictionary with page#... etc
-        if isinstance(item, list):
-            # example json files contain only one country's data, but for the future expansion with multiple indexes
-            for country in item:
-                country_name = country['name']
-                for key, value in country.items():
-                    # for nested values such as region/incomeLevel/lendingType, check the outer key and internal key
-                    if isinstance(query, list):     # nested query will be a list instead of a str
-                        if key == query[0]:
-                            parsed_value = value[query[1]]
-                    else:   # else, just match the keyword with the key
-                        if key == query:
-                            parsed_value = value
+    # if it's a list, we need to get data out of the list
+    if isinstance(json_data, (tuple, list)):
+        for item in json_data:
+            country_json_parser(country, item, keyword, query)
+    #
+    else:
+        for key, value in json_data.items():
+            if isinstance(query, list):  # nested query will be a list instead of a str
+                if key == query[0]:
+                    parsed_value = value[query[1]]
+                    print('<<{}\'s {} is {}>>\n'.format(country, keyword, parsed_value))
 
-    print('<<{}\'s {} is {}.>>\n'.format(country_name, keyword, parsed_value))
+            else:
+                if key == query:
+                    parsed_value = value
+                    print('<<{}\'s {} is {}>>\n'.format(country, keyword, parsed_value))
+
+            # If each key had a unique name, we can do something along the line of
+            # if isinstance(value, dict):
+            #   country_json_parser(country, value, keyword, query)
+            # because that means the value is still nested and needs to be opened/expanded further.
+            # However, it might be useful for some situation, but for this JSON, this is not ideal
+            #   since there are multiple keys with the same name under the nest: id and value.
 
 
 def main():
@@ -69,10 +76,9 @@ def main():
             break
         else:
             print('Please enter the keyword within the list\n')
-
     query = keyword_list[keyword]   # matching value pair
     json_data = open_country_json_file(country)
-    country_json_parser(json_data, keyword, query)
+    country_json_parser(country, json_data, keyword, query)
 
     while True:
         quit = input('Would you like to search again? (Y/N) ').upper()
